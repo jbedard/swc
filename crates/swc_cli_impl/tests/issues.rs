@@ -16,7 +16,7 @@ fn cli() -> Result<Command> {
 
 #[test]
 fn issue_8265_1() -> Result<()> {
-    let pwd = Path::new("tests/fixture-manual/8265").canonicalize()?;
+    let pwd = Path::new("tests/fixture-manual/8265_1").canonicalize()?;
     let tmp = TempDir::new()?;
 
     create_dir_all(tmp.path().join("src/modules/moduleA"))?;
@@ -49,6 +49,64 @@ fn issue_8265_1() -> Result<()> {
     cmd.assert().success();
 
     let content = fs::read_to_string(tmp.join("src/index.js"))?;
+    assert!(
+        content.contains("require(\"./modules/moduleA\")"),
+        "{}",
+        content
+    );
+
+    Ok(())
+}
+
+#[test]
+fn issue_8265_2() -> Result<()> {
+    let pwd = Path::new("tests/fixture-manual/8265_2").canonicalize()?;
+    let tmp = TempDir::new()?;
+    let sbx = &tmp.path().join("sbx/123")
+
+    create_dir_all(tmp.path().join("src/modules/moduleA"))?;
+    create_dir_all(tmp.path().join("src/modules/moduleB"))?;
+    create_dir_all(sbx.path().join("src/modules/moduleA"))?;
+    create_dir_all(sbx.path().join("src/modules/moduleB"))?;
+
+    hard_link(&pwd.join(".swcrc"), &tmp.path().join(".swcrc"));
+    hard_link(&pwd.join("src/index.ts"), &tmp.path().join("src/index.ts"));
+    hard_link(
+        &pwd.join("src/modules/moduleA/index.ts"),
+        &tmp.path().join("src/modules/moduleA/index.ts"),
+    );
+    hard_link(
+        &pwd.join("src/modules/moduleB/index.ts"),
+        &tmp.path().join("src/modules/moduleB/index.ts"),
+    );
+
+    symlink(&tmp.join(".swcrc"), &sbx.path().join(".swcrc"));
+    symlink(&tmp.join("src/index.ts"), &sbx.path().join("src/index.ts"));
+    symlink(
+        &tmp.join("src/modules/moduleA/index.ts"),
+        &sbx.path().join("src/modules/moduleA/index.ts"),
+    );
+    symlink(
+        &tmp.join("src/modules/moduleB/index.ts"),
+        &sbx.path().join("src/modules/moduleB/index.ts"),
+    );
+
+    print_ls_alr(&sbx);
+
+    let mut cmd = cli()?;
+    cmd.current_dir(&sbx)
+        .arg("compile")
+        .arg("--source-maps")
+        .arg("false")
+        .arg("--config-file")
+        .arg(".swcrc")
+        .arg("--out-file")
+        .arg("src/index.js")
+        .arg("src/index.ts");
+
+    cmd.assert().success();
+
+    let content = fs::read_to_string(sbx.join("src/index.js"))?;
     assert!(
         content.contains("require(\"./modules/moduleA\")"),
         "{}",
