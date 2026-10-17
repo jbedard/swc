@@ -1127,7 +1127,9 @@ impl Default for Rc {
             Config {
                 env: None,
                 test: None,
-                exclude: Some(FileMatcher::Pattern(FilePattern::Regex("\\.tsx?$".into()))),
+                exclude: Some(FileMatcher::Pattern(FilePattern::Regex(
+                    "\\.(tsx?|[cm]ts)$".into(),
+                ))),
                 jsc: JscConfig {
                     syntax: Some(Default::default()),
                     ..Default::default()
@@ -1276,7 +1278,7 @@ impl Config {
             let is_dts = file
                 .file_name()
                 .and_then(|f| f.to_str())
-                .map(|s| s.ends_with(".d.ts"))
+                .map(|s| s.ends_with(".d.ts") || s.ends_with(".d.mts") || s.ends_with(".d.cts"))
                 .unwrap_or(false);
 
             if is_dts {

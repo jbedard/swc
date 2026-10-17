@@ -1115,3 +1115,52 @@ fn print_ls_alr(path: &Path) {
     cmd.arg("-alR").arg(path);
     cmd.status().unwrap();
 }
+
+#[test]
+fn default_config_parses_mts_and_cts_as_typescript() -> Result<()> {
+    let sandbox = TempDir::new()?;
+    let source =
+        "export interface Foo {\n  name: string;\n}\nexport const foo: Foo = { name: \"foo\" };\n";
+    fs::write(sandbox.path().join("a.mts"), source)?;
+    fs::write(sandbox.path().join("b.cts"), source)?;
+
+    for (input, output) in [("a.mts", "a.mjs"), ("b.cts", "b.cjs")] {
+        let mut cmd = cli()?;
+        cmd.current_dir(&sandbox)
+            .arg("compile")
+            .arg("--out-file")
+            .arg(output)
+            .arg(input);
+
+        cmd.assert().success();
+
+        let output = fs::read_to_string(sandbox.path().join(output))?;
+        assert!(
+            !output.contains("interface") && output.contains("foo"),
+            "Expected TypeScript to be stripped from {input}. Got: {output}",
+        );
+    }
+
+    Ok(())
+}
+
+#[test]
+fn default_config_parses_d_mts_and_d_cts_as_declarations() -> Result<()> {
+    let sandbox = TempDir::new()?;
+    let source = "export declare const foo: string;\nexport const bar: string;\n";
+    fs::write(sandbox.path().join("a.d.mts"), source)?;
+    fs::write(sandbox.path().join("b.d.cts"), source)?;
+
+    for (input, output) in [("a.d.mts", "a.mjs"), ("b.d.cts", "b.cjs")] {
+        let mut cmd = cli()?;
+        cmd.current_dir(&sandbox)
+            .arg("compile")
+            .arg("--out-file")
+            .arg(output)
+            .arg(input);
+
+        cmd.assert().success();
+    }
+
+    Ok(())
+}
